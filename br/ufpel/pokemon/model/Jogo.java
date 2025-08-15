@@ -1,27 +1,40 @@
-// Pacote: br.ufpel.pokemon.model
+// Ficheiro: Jogo.java (VERSÃO ATUALIZADA)
 package br.ufpel.pokemon.model;
 
-import br.ufpel.pokemon.exception.RegiaoInvalidaException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
-public class Jogo {
+public class Jogo implements Serializable {
+    private static final long serialVersionUID = 1L;
     private Treinador treinadorUsuario;
     private Treinador treinadorComputador;
     private Tabuleiro tabuleiro;
-    private Random random;
+    private transient Random random;
     private Batalha batalhaAtual;
     private Celula celulaDaBatalhaAtual;
+    private boolean jogadorPosicionado = false; // NOVO: para controlar o fluxo
 
-    public Jogo() {
+    // CONSTRUTOR ALTERADO
+    public Jogo(boolean distribuirTudo) {
         this.tabuleiro = new Tabuleiro(8);
         this.random = new Random();
         this.batalhaAtual = null;
         this.celulaDaBatalhaAtual = null;
         
         inicializarTreinadores();
-        distribuirPokemonsAleatoriamente();
+        
+        if (distribuirTudo) {
+            distribuirTodosOsPokemons();
+        }
+    }
+    
+    private void readObject(ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        this.random = new Random();
     }
 
     private void inicializarTreinadores() {
@@ -31,21 +44,38 @@ public class Jogo {
         Pokemon pokemonInicialPC = new PokemonTerra("Meu Sandshrew", 10, 1);
         this.treinadorComputador = new Treinador("Gary", pokemonInicialPC, true);
     }
+    
+    // MÉTODO RENOMEADO (antes era distribuirPokemonsAleatoriamente)
+    public void distribuirTodosOsPokemons() {
+        List<Pokemon> todosOsPokemons = new ArrayList<>();
+        todosOsPokemons.addAll(treinadorUsuario.getPokemonsNaMochila());
+        todosOsPokemons.addAll(treinadorComputador.getPokemonsNaMochila());
+        
+        // Adiciona os selvagens
+        todosOsPokemons.add(new PokemonAgua("Squirtle", 100, 15));
+        todosOsPokemons.add(new PokemonFloresta("Bulbasaur", 110, 12));
+        todosOsPokemons.add(new PokemonTerra("Diglett", 90, 18));
+        todosOsPokemons.add(new PokemonEletrico("Pikachu", 95, 16));
+        
+        posicionarListaDePokemon(todosOsPokemons);
+    }
 
-    public void distribuirPokemonsAleatoriamente() {
+    // NOVO MÉTODO: para distribuir apenas os que ainda não estão no mapa
+    public void distribuirPokemonsRestantes() {
         List<Pokemon> pokemonsParaDistribuir = new ArrayList<>();
+        
+        // Pega todos os pokemons que não são do jogador principal
+        pokemonsParaDistribuir.addAll(treinadorComputador.getPokemonsNaMochila());
         pokemonsParaDistribuir.add(new PokemonAgua("Squirtle", 100, 15));
         pokemonsParaDistribuir.add(new PokemonFloresta("Bulbasaur", 110, 12));
         pokemonsParaDistribuir.add(new PokemonTerra("Diglett", 90, 18));
         pokemonsParaDistribuir.add(new PokemonEletrico("Pikachu", 95, 16));
-        Pokemon pidgeyDoPC = new PokemonFloresta("Pidgey", 70, 10);
-        treinadorComputador.capturar(pidgeyDoPC);
-        pokemonsParaDistribuir.add(pidgeyDoPC);
-        Pokemon rattataDoPC = new PokemonTerra("Rattata", 65, 12);
-        treinadorComputador.capturar(rattataDoPC);
-        pokemonsParaDistribuir.add(rattataDoPC);
 
-        for (Pokemon p : pokemonsParaDistribuir) {
+        posicionarListaDePokemon(pokemonsParaDistribuir);
+    }
+    
+    private void posicionarListaDePokemon(List<Pokemon> lista) {
+        for (Pokemon p : lista) {
             boolean posicionado = false;
             while (!posicionado) {
                 try {
@@ -54,12 +84,13 @@ public class Jogo {
                     tabuleiro.posicionarPokemon(p, linha, coluna);
                     posicionado = true;
                 } catch (Exception e) {
-                    // Continua a tentar se a célula estiver ocupada ou a região for inválida
+                    // Continua tentando
                 }
             }
         }
     }
 
+    // ... (O resto da classe Jogo continua igual a partir daqui)
     public String processarJogada(int linha, int coluna) {
         if (batalhaAtual != null && !batalhaAtual.isTerminada()) {
             return "Termine a batalha atual antes de explorar!";
@@ -79,9 +110,12 @@ public class Jogo {
                 } else {
                     mensagem = "Ah, não! O " + pokemonEncontrado.getNome() + " selvagem escapou!";
                 }
-            } else {
+            } else if (pokemonEncontrado.getTreinador() != this.treinadorUsuario) {
                 iniciarBatalha(treinadorUsuario.getProximoPokemonParaBatalha(), pokemonEncontrado, celulaClicada);
                 mensagem = "O " + pokemonEncontrado.getNome() + " de " + pokemonEncontrado.getTreinador().getNome() + " quer batalhar!";
+            } else {
+                mensagem = "Você encontrou seu próprio Pokémon: " + pokemonEncontrado.getNome();
+                celulaClicada.revelar();
             }
             return mensagem;
         } else {
@@ -89,7 +123,7 @@ public class Jogo {
             return "Não há nada aqui...";
         }
     }
-
+    
     public String usarDica(int linha, int coluna) {
         if (!treinadorUsuario.usarDica()) {
             return "Você não tem mais dicas para usar!";
@@ -145,18 +179,26 @@ public class Jogo {
         treinadorComputador.restabelecerEnergiaDoTime();
     }
 
-    public List<Pokemon> getPokemonsDoJogador() {
-        return this.treinadorUsuario.getPokemonsNaMochila();
+    public boolean verificarFimDeJogo() {
+        for (int i = 0; i < tabuleiro.getTamanho(); i++) {
+            for (int j = 0; j < tabuleiro.getTamanho(); j++) {
+                Celula c = tabuleiro.getCelula(i, j);
+                if (c.estaOcupada() && c.getPokemon().isSelvagem()) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
-    public void trocarPokemonDoJogador(int indice) {
-        this.treinadorUsuario.trocarPokemonPrincipal(indice);
-    }
-
-    // Getters
+    // Getters e Setters
     public Tabuleiro getTabuleiro() { return this.tabuleiro; }
     public Batalha getBatalhaAtual() { return this.batalhaAtual; }
     public int getDicasRestantes() { return this.treinadorUsuario.getDicasRestantes(); }
     public int getPontuacaoJogador() { return treinadorUsuario.getPontuacao(); }
     public int getPontuacaoComputador() { return treinadorComputador.getPontuacao(); }
+    public List<Pokemon> getPokemonsDoJogador() { return this.treinadorUsuario.getPokemonsNaMochila(); }
+    public void trocarPokemonDoJogador(int indice) { this.treinadorUsuario.trocarPokemonPrincipal(indice); }
+    public boolean isJogadorPosicionado() { return jogadorPosicionado; }
+    public void setJogadorPosicionado(boolean jogadorPosicionado) { this.jogadorPosicionado = jogadorPosicionado; }
 }

@@ -2,10 +2,12 @@
 package br.ufpel.pokemon.model;
 
 import br.ufpel.pokemon.model.estado.EstadoDesmaiado;
+import java.io.Serializable; // Garante que a classe pode ser salva
 import java.util.List;
 import java.util.ArrayList;
 
-public class Treinador {
+public class Treinador implements Serializable { // Implementa Serializable
+    private static final long serialVersionUID = 1L; // Para versionamento da serialização
     private String nome;
     private List<Pokemon> pokemonsNaMochila;
     private Pokemon pokemonAtivo;
@@ -18,17 +20,20 @@ public class Treinador {
         this.pokemonsNaMochila = new ArrayList<>();
         this.dicasRestantes = 3;
         
-        // CORREÇÃO: Verifica se o Pokémon inicial não é nulo antes de capturá-lo.
         if (pokemonInicial != null) {
             capturar(pokemonInicial);
             this.pokemonAtivo = pokemonInicial;
         }
     }
 
+    // MÉTODO ALTERADO
     public int getPontuacao() {
         int pontuacaoTotal = 0;
         for (Pokemon p : pokemonsNaMochila) {
-            pontuacaoTotal += p.getNivel();
+            // A pontuação agora é a soma dos NÍVEIS GANHOS.
+            // Um pokémon de nível 1 (base) contribui com 0 pontos (1 - 1 = 0).
+            // Um pokémon de nível 2 contribui com 1 ponto (2 - 1 = 1), e assim por diante.
+            pontuacaoTotal += (p.getNivel() - 1);
         }
         return pontuacaoTotal;
     }
@@ -40,12 +45,11 @@ public class Treinador {
     }
 
     public void capturar(Pokemon p) {
-        if (p == null) return; // Adiciona uma verificação de segurança
+        if (p == null) return;
 
         p.setTreinador(this);
         this.pokemonsNaMochila.add(p);
         
-        // Define o primeiro Pokémon capturado como ativo
         if (this.pokemonAtivo == null || this.pokemonAtivo.getEstado() instanceof EstadoDesmaiado) {
             this.pokemonAtivo = p;
         }

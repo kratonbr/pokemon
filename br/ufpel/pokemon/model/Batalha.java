@@ -35,7 +35,6 @@ public class Batalha  {
         } else {
             logBatalha = atacante.getEstrategiaDeAtaque().executarAtaque(atacante, defensor, this);
         }
-
         if (defensor.getEnergia() <= 0) {
             terminada = true;
             logBatalha += "\n" + defensor.getNome() + " desmaiou! " + atacante.getNome() + " venceu!";

@@ -1,4 +1,4 @@
-// Ficheiro: Jogo.java (VERSÃO ATUALIZADA)
+// Ficheiro: Jogo.java (VERSÃO COMPLETA E CORRIGIDA)
 package br.ufpel.pokemon.model;
 
 import java.io.ObjectInputStream;
@@ -6,7 +6,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 
 public class Jogo implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -16,9 +15,8 @@ public class Jogo implements Serializable {
     private transient Random random;
     private Batalha batalhaAtual;
     private Celula celulaDaBatalhaAtual;
-    private boolean jogadorPosicionado = false; // NOVO: para controlar o fluxo
+    private boolean jogadorPosicionado = false;
 
-    // CONSTRUTOR ALTERADO
     public Jogo(boolean distribuirTudo) {
         this.tabuleiro = new Tabuleiro(8);
         this.random = new Random();
@@ -45,12 +43,19 @@ public class Jogo implements Serializable {
         this.treinadorComputador = new Treinador("Gary", pokemonInicialPC, true);
     }
     
-    // MÉTODO RENOMEADO (antes era distribuirPokemonsAleatoriamente)
     public void distribuirTodosOsPokemons() {
         List<Pokemon> todosOsPokemons = new ArrayList<>();
+        // Adiciona os Pokémon dos treinadores
         todosOsPokemons.addAll(treinadorUsuario.getPokemonsNaMochila());
-        todosOsPokemons.addAll(treinadorComputador.getPokemonsNaMochila());
         
+        // Adiciona os Pokémon do PC, garantindo que não são duplicados se já estiverem em `todosOsPokemons`
+        Pokemon pidgeyDoPC = new PokemonFloresta("Pidgey", 70, 10);
+        treinadorComputador.capturar(pidgeyDoPC);
+        todosOsPokemons.add(pidgeyDoPC);
+        Pokemon rattataDoPC = new PokemonTerra("Rattata", 65, 12);
+        treinadorComputador.capturar(rattataDoPC);
+        todosOsPokemons.add(rattataDoPC);
+
         // Adiciona os selvagens
         todosOsPokemons.add(new PokemonAgua("Squirtle", 100, 15));
         todosOsPokemons.add(new PokemonFloresta("Bulbasaur", 110, 12));
@@ -60,17 +65,13 @@ public class Jogo implements Serializable {
         posicionarListaDePokemon(todosOsPokemons);
     }
 
-    // NOVO MÉTODO: para distribuir apenas os que ainda não estão no mapa
     public void distribuirPokemonsRestantes() {
         List<Pokemon> pokemonsParaDistribuir = new ArrayList<>();
-        
-        // Pega todos os pokemons que não são do jogador principal
         pokemonsParaDistribuir.addAll(treinadorComputador.getPokemonsNaMochila());
         pokemonsParaDistribuir.add(new PokemonAgua("Squirtle", 100, 15));
         pokemonsParaDistribuir.add(new PokemonFloresta("Bulbasaur", 110, 12));
         pokemonsParaDistribuir.add(new PokemonTerra("Diglett", 90, 18));
         pokemonsParaDistribuir.add(new PokemonEletrico("Pikachu", 95, 16));
-
         posicionarListaDePokemon(pokemonsParaDistribuir);
     }
     
@@ -81,8 +82,11 @@ public class Jogo implements Serializable {
                 try {
                     int linha = random.nextInt(tabuleiro.getTamanho());
                     int coluna = random.nextInt(tabuleiro.getTamanho());
-                    tabuleiro.posicionarPokemon(p, linha, coluna);
-                    posicionado = true;
+                    // Verifica se a célula já não está ocupada ANTES de tentar posicionar
+                    if (!tabuleiro.getCelula(linha, coluna).estaOcupada()) {
+                        tabuleiro.posicionarPokemon(p, linha, coluna);
+                        posicionado = true;
+                    }
                 } catch (Exception e) {
                     // Continua tentando
                 }
@@ -90,37 +94,82 @@ public class Jogo implements Serializable {
         }
     }
 
-    // ... (O resto da classe Jogo continua igual a partir daqui)
+    // ESTE É UM DOS MÉTODOS QUE ESTAVA A FALTAR
+// MÉTODO PROCESSARJOGADA TOTALMENTE CORRIGIDO
     public String processarJogada(int linha, int coluna) {
         if (batalhaAtual != null && !batalhaAtual.isTerminada()) {
             return "Termine a batalha atual antes de explorar!";
         }
         Celula celulaClicada = tabuleiro.getCelula(linha, coluna);
-        if (celulaClicada.isRevelada()) {
-            return "Você já explorou esta área!";
+
+        // Se a célula já foi revelada e está vazia, não há nada a fazer.
+        if (celulaClicada.isRevelada() && !celulaClicada.estaOcupada()) {
+            return "Você já explorou esta área e não há nada aqui.";
         }
+        
+        // Verifica se é a primeira vez que se clica nesta célula.
+        boolean primeiraVez = !celulaClicada.isRevelada();
+        
+        // Se for a primeira vez, a célula é revelada para o jogador.
+        if (primeiraVez) {
+            celulaClicada.revelar();
+        }
+
+        // Se a célula está ocupada, processa a interação (captura ou batalha).
+        if (celulaClicada.estaOcupada()) {
+            Pokemon pokemonEncontrado = celulaClicada.getPokemon();
+            String mensagem;
+
+            // Lógica para Pokémon Selvagem
+            if (pokemonEncontrado.isSelvagem()) {
+                if (random.nextInt(100) < 60) { // Chance de captura
+                    treinadorUsuario.capturar(pokemonEncontrado);
+                    mensagem = (primeiraVez ? "Você encontrou e capturou um " : "Você tentou de novo e capturou o ") + pokemonEncontrado.getNome() + " selvagem!";
+                } else {
+                    mensagem = "Ah, não! O " + pokemonEncontrado.getNome() + " selvagem escapou" + (primeiraVez ? "!" : " novamente!");
+                }
+            } 
+            // Lógica para Pokémon do Computador
+            else if (pokemonEncontrado.getTreinador() == treinadorComputador) {
+                iniciarBatalha(treinadorUsuario.getProximoPokemonParaBatalha(), pokemonEncontrado, celulaClicada);
+                mensagem = "O " + pokemonEncontrado.getNome() + " de " + pokemonEncontrado.getTreinador().getNome() + " quer batalhar!";
+            } 
+            // Lógica para Pokémon do próprio jogador
+            else if (pokemonEncontrado.getTreinador() == treinadorUsuario) {
+                 mensagem = "Você encontrou seu próprio Pokémon: " + pokemonEncontrado.getNome();
+            } else {
+                mensagem = "Um Pokémon misterioso está aqui.";
+            }
+            return mensagem;
+        } 
+        // Se a célula não está ocupada (e era a primeira vez a clicar)
+        else {
+            return "Não há nada aqui...";
+        }
+    }
+
+    // ESTE É O OUTRO MÉTODO QUE ESTAVA A FALTAR
+    public String processarJogadaPC(int linha, int coluna) {
+        Celula celulaClicada = tabuleiro.getCelula(linha, coluna);
         if (celulaClicada.estaOcupada()) {
             Pokemon pokemonEncontrado = celulaClicada.getPokemon();
             String mensagem;
             if (pokemonEncontrado.isSelvagem()) {
                 celulaClicada.revelar();
                 if (random.nextInt(100) < 60) {
-                    treinadorUsuario.capturar(pokemonEncontrado);
-                    mensagem = "Você encontrou um " + pokemonEncontrado.getNome() + " selvagem e o capturou!";
+                    treinadorComputador.capturar(pokemonEncontrado);
+                    mensagem = "O computador encontrou um " + pokemonEncontrado.getNome() + " selvagem e o capturou!";
                 } else {
-                    mensagem = "Ah, não! O " + pokemonEncontrado.getNome() + " selvagem escapou!";
+                    mensagem = "O " + pokemonEncontrado.getNome() + " selvagem escapou do computador!";
                 }
-            } else if (pokemonEncontrado.getTreinador() != this.treinadorUsuario) {
-                iniciarBatalha(treinadorUsuario.getProximoPokemonParaBatalha(), pokemonEncontrado, celulaClicada);
-                mensagem = "O " + pokemonEncontrado.getNome() + " de " + pokemonEncontrado.getTreinador().getNome() + " quer batalhar!";
             } else {
-                mensagem = "Você encontrou seu próprio Pokémon: " + pokemonEncontrado.getNome();
+                mensagem = "O computador encontrou o Pokémon " + pokemonEncontrado.getNome() + ".";
                 celulaClicada.revelar();
             }
             return mensagem;
         } else {
             celulaClicada.revelar();
-            return "Não há nada aqui...";
+            return "O computador não encontrou nada...";
         }
     }
     
@@ -189,6 +238,16 @@ public class Jogo implements Serializable {
             }
         }
         return true;
+    }
+     public boolean existemCelulasNaoReveladas() {
+        for (int i = 0; i < tabuleiro.getTamanho(); i++) {
+            for (int j = 0; j < tabuleiro.getTamanho(); j++) {
+                if (!tabuleiro.getCelula(i, j).isRevelada()) {
+                    return true; // Encontrou pelo menos uma célula jogável
+                }
+            }
+        }
+        return false; // Nenhuma célula não revelada foi encontrada
     }
 
     // Getters e Setters

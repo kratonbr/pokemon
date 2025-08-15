@@ -5,7 +5,7 @@ import br.ufpel.pokemon.model.Batalha;
 import br.ufpel.pokemon.model.Pokemon;
 import java.util.Random;
 
-public class AtaquePadrao implements EstrategiaDeAtaque {
+public class AtaquePadrao implements EstrategiaDeAtaque, java.io.Serializable {
     @Override
     public String executarAtaque(Pokemon atacante, Pokemon defensor, Batalha batalha) {
         int dano = atacante.getForca() + new Random().nextInt(atacante.getNivel() * 5 + 1);

@@ -1,9 +1,10 @@
-// Ficheiro: Tabuleiro.java
+// Ficheiro: Tabuleiro.java (CORRIGIDO)
 package br.ufpel.pokemon.model;
 
 import br.ufpel.pokemon.exception.RegiaoInvalidaException;
 
-public class Tabuleiro {
+// Adicionada a permissão para ser salvo
+public class Tabuleiro implements java.io.Serializable {
     private Celula[][] celulas;
     private int tamanhoN;
 

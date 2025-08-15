@@ -1,4 +1,3 @@
-// Pacote: br.ufpel.pokemon.model
 package br.ufpel.pokemon.model;
 
 import br.ufpel.pokemon.model.ataque.EstrategiaDeAtaque;
@@ -6,7 +5,9 @@ import br.ufpel.pokemon.model.estado.EstadoPokemon;
 import br.ufpel.pokemon.model.estado.EstadoNormal;
 import br.ufpel.pokemon.model.estado.EstadoDesmaiado;
 
-public abstract class Pokemon {
+// Adicionada a permissão para ser salvo
+public abstract class Pokemon implements java.io.Serializable {
+    // ... o resto do seu código continua igual ...
     protected String nome;
     protected int energia;
     protected int energiaMaxima;
@@ -76,9 +77,6 @@ public abstract class Pokemon {
         }
     }
 
-    /**
-     * NOVO MÉTODO: Verifica se este Pokémon pertence ao computador.
-     */
     public boolean isDoComputador() {
         return this.treinador != null && this.treinador.isComputador();
     }

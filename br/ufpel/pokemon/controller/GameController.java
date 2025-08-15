@@ -112,12 +112,18 @@ public class GameController {
         }
     }
 
+// MÉTODO EXECUTARJOGADACOMPUTADOR - LÓGICA DE FIM DE JOGO REFINADA
     private void executarJogadaComputador() {
+        // A verificação para evitar o loop infinito continua aqui e está correta.
         if (!jogoModel.existemCelulasNaoReveladas()) {
             turnoDoJogador = true;
             janelaView.atualizarStatus("Sua Vez de Jogar");
-            verificarCondicaoDeVitoria(); 
-            return;
+            
+            // O problema estava aqui. Em vez de chamar a verificação de vitória,
+            // que pode terminar o jogo, apenas informamos que o PC não tem mais jogadas.
+            // A verificação de vitória será chamada naturalmente quando o último Pokémon for capturado.
+            JOptionPane.showMessageDialog(janelaView, "O computador não tem mais células para explorar.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            return; 
         }
 
         SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
@@ -128,10 +134,12 @@ public class GameController {
                 Tabuleiro tabuleiro = jogoModel.getTabuleiro();
                 int tamanho = tabuleiro.getTamanho();
                 int linha, coluna;
+                
                 do {
                     linha = random.nextInt(tamanho);
                     coluna = random.nextInt(tamanho);
                 } while (tabuleiro.getCelula(linha, coluna).isRevelada());
+                
                 String resultadoPC = "O Computador escolheu a célula [" + linha + "," + coluna + "].\n";
                 resultadoPC += jogoModel.processarJogadaPC(linha, coluna);
                 return resultadoPC;
@@ -143,6 +151,8 @@ public class GameController {
                     String resultadoFinalPC = get();
                     JOptionPane.showMessageDialog(janelaView, resultadoFinalPC, "Jogada do Computador", JOptionPane.INFORMATION_MESSAGE);
                     janelaView.atualizar();
+                    
+                    // A verificação de vitória aqui também é importante, caso o PC capture o último Pokémon.
                     if (!verificarCondicaoDeVitoria()) {
                         turnoDoJogador = true;
                         janelaView.atualizarStatus("Sua Vez de Jogar");

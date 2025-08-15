@@ -1,6 +1,8 @@
+// Ficheiro: Celula.java (CORRIGIDO)
 package br.ufpel.pokemon.model;
 
-public class Celula {
+// Adicionada a permissão para ser salvo
+public class Celula implements java.io.Serializable {
     private Pokemon pokemon;
     private final int linha;
     private final int coluna;

@@ -4,7 +4,7 @@ package br.ufpel.pokemon.model;
 import br.ufpel.pokemon.model.estado.EstadoNormal;
 import br.ufpel.pokemon.model.estado.EstadoParalisado;
 
-public class Batalha {
+public class Batalha  {
     private Pokemon pokemonJogador;
     private Pokemon pokemonAdversario;
     private boolean turnoDoJogador;
@@ -39,7 +39,6 @@ public class Batalha {
         if (defensor.getEnergia() <= 0) {
             terminada = true;
             logBatalha += "\n" + defensor.getNome() + " desmaiou! " + atacante.getNome() + " venceu!";
-            
             Pokemon vencedor = atacante;
             Pokemon perdedor = defensor;
             int xpGanha = perdedor.getNivel() * 80;

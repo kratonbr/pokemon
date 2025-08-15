@@ -8,7 +8,7 @@ import br.ufpel.pokemon.model.Pokemon;
  * Esta classe agora serve como um "marcador" para o padrão State.
  * A lógica de ataque foi movida para o padrão Strategy.
  */
-public class EstadoNormal implements EstadoPokemon {
+public class EstadoNormal implements EstadoPokemon, java.io.Serializable {
     /**
      * No estado Normal, a ação é o ataque, que agora é gerido
      * diretamente pela classe Batalha através do padrão Strategy.
